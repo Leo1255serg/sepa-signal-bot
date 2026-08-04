@@ -764,20 +764,16 @@ def job_monthly() -> None:
     )
 
 
-def within_window(
-    ny_dt: datetime,
-    hour: int,
-    minute: int,
-    before_min: int = 10,
-    after_min: int = 45,
-) -> bool:
-    """
-    GitHub cron often starts late (10–45+ min). Allow a wide after-window
-    so a delayed runner still catches morning/midday/close jobs once per day.
-    """
-    target = ny_dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    delta_min = (ny_dt - target).total_seconds() / 60.0
-    return -before_min <= delta_min <= after_min
+def _ny_minutes(ny_dt: datetime) -> int:
+    return ny_dt.hour * 60 + ny_dt.minute
+
+
+def in_ny_range(ny_dt: datetime, start_hhmm: str, end_hhmm: str) -> bool:
+    """Inclusive NY clock range, e.g. '15:20'..'16:45'. Survives GitHub cron delays."""
+    sh, sm = map(int, start_hhmm.split(":"))
+    eh, em = map(int, end_hhmm.split(":"))
+    now_m = _ny_minutes(ny_dt)
+    return sh * 60 + sm <= now_m <= eh * 60 + em
 
 
 def resolve_auto_jobs(ny_dt: datetime, state: dict) -> list[str]:
@@ -785,27 +781,37 @@ def resolve_auto_jobs(ny_dt: datetime, state: dict) -> list[str]:
     day_key = ny_dt.date().isoformat()
     jobs: list[str] = []
 
-    # Monthly: 1st of month ~09:00 NY (even if weekend/holiday)
-    if ny_dt.day == 1 and within_window(ny_dt, 9, 0, before_min=10, after_min=60):
+    log.info(
+        "Auto resolve: NY=%s weekday=%s trading_day=%s",
+        ny_dt.strftime("%Y-%m-%d %H:%M %Z"),
+        ny_dt.weekday(),
+        is_trading_day(ny_dt.date()),
+    )
+
+    # Monthly: 1st of month morning NY (even if weekend/holiday)
+    if ny_dt.day == 1 and in_ny_range(ny_dt, "08:50", "11:00"):
         month_key = ny_dt.strftime("%Y-%m")
         if state.get("last_monthly") != month_key:
             jobs.append("monthly")
 
     if not is_trading_day(ny_dt.date()):
+        log.info("Non-trading day — only monthly may run. jobs=%s", jobs)
         return jobs
 
-    if within_window(ny_dt, 10, 0) and not job_already_done(state, "morning", day_key):
+    # Wide ranges so delayed GitHub schedules still catch each slot once/day.
+    if in_ny_range(ny_dt, "09:50", "11:30") and not job_already_done(state, "morning", day_key):
         jobs.append("morning")
-    if within_window(ny_dt, 13, 0) and not job_already_done(state, "midday", day_key):
+    if in_ny_range(ny_dt, "12:50", "14:30") and not job_already_done(state, "midday", day_key):
         jobs.append("midday")
-    if within_window(ny_dt, 15, 30) and not job_already_done(state, "close_check", day_key):
+    if in_ny_range(ny_dt, "15:20", "16:50") and not job_already_done(state, "close_check", day_key):
         jobs.append("close_check")
 
-    # Friday after close ~16:05
-    if ny_dt.weekday() == 4 and within_window(ny_dt, 16, 5, before_min=5, after_min=50):
+    # Friday after close
+    if ny_dt.weekday() == 4 and in_ny_range(ny_dt, "16:00", "17:30"):
         if state.get("last_weekly") != day_key and not job_already_done(state, "weekly", day_key):
             jobs.append("weekly")
 
+    log.info("Auto-selected jobs: %s | state_today=%s", jobs, state.get("jobs", {}).get(day_key, []))
     return jobs
 
 
