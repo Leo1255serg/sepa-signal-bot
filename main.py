@@ -762,10 +762,20 @@ def job_monthly() -> None:
     )
 
 
-def within_window(ny_dt: datetime, hour: int, minute: int, tolerance_min: int = 20) -> bool:
+def within_window(
+    ny_dt: datetime,
+    hour: int,
+    minute: int,
+    before_min: int = 10,
+    after_min: int = 45,
+) -> bool:
+    """
+    GitHub cron often starts late (10–45+ min). Allow a wide after-window
+    so a delayed runner still catches morning/midday/close jobs once per day.
+    """
     target = ny_dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    delta = abs((ny_dt - target).total_seconds()) / 60.0
-    return delta <= tolerance_min
+    delta_min = (ny_dt - target).total_seconds() / 60.0
+    return -before_min <= delta_min <= after_min
 
 
 def resolve_auto_jobs(ny_dt: datetime, state: dict) -> list[str]:
@@ -774,7 +784,7 @@ def resolve_auto_jobs(ny_dt: datetime, state: dict) -> list[str]:
     jobs: list[str] = []
 
     # Monthly: 1st of month ~09:00 NY (even if weekend/holiday)
-    if ny_dt.day == 1 and within_window(ny_dt, 9, 0, 25):
+    if ny_dt.day == 1 and within_window(ny_dt, 9, 0, before_min=10, after_min=60):
         month_key = ny_dt.strftime("%Y-%m")
         if state.get("last_monthly") != month_key:
             jobs.append("monthly")
@@ -782,15 +792,15 @@ def resolve_auto_jobs(ny_dt: datetime, state: dict) -> list[str]:
     if not is_trading_day(ny_dt.date()):
         return jobs
 
-    if within_window(ny_dt, 10, 0, 20) and not job_already_done(state, "morning", day_key):
+    if within_window(ny_dt, 10, 0) and not job_already_done(state, "morning", day_key):
         jobs.append("morning")
-    if within_window(ny_dt, 13, 0, 20) and not job_already_done(state, "midday", day_key):
+    if within_window(ny_dt, 13, 0) and not job_already_done(state, "midday", day_key):
         jobs.append("midday")
-    if within_window(ny_dt, 15, 30, 20) and not job_already_done(state, "close_check", day_key):
+    if within_window(ny_dt, 15, 30) and not job_already_done(state, "close_check", day_key):
         jobs.append("close_check")
 
     # Friday after close ~16:05
-    if ny_dt.weekday() == 4 and within_window(ny_dt, 16, 5, 25):
+    if ny_dt.weekday() == 4 and within_window(ny_dt, 16, 5, before_min=5, after_min=50):
         if state.get("last_weekly") != day_key and not job_already_done(state, "weekly", day_key):
             jobs.append("weekly")
 
