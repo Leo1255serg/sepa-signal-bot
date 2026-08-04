@@ -1,22 +1,16 @@
 name: SEPA Bot
 
+# Запуск только вручную или через внешний cron (cron-job.org).
+# Встроенный GitHub schedule на Free+Private ненадёжен — отключён.
 on:
-  schedule:
-    # Every 15 minutes during the US session window (UTC).
-    # Exact job selection is done in Python via America/New_York (DST-safe).
-    # Off-:00/:30 minutes reduce GitHub schedule queue delays.
-    - cron: "5,20,35,50 13-21 * * 1-5"
-    # 1st of month ~09:00 NY (covers EST/EDT)
-    - cron: "5,20,35,50 13-14 1 * *"
   workflow_dispatch:
     inputs:
       mode:
-        description: "Job: auto | morning | midday | close_check | weekly | monthly"
+        description: "Job: morning | midday | close_check | weekly | monthly"
         required: true
-        default: "auto"
+        default: "morning"
         type: choice
         options:
-          - auto
           - morning
           - midday
           - close_check
@@ -25,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: sepa-bot
@@ -58,7 +53,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
-          if [ -z "$MODE" ]; then MODE="auto"; fi
+          if [ -z "$MODE" ]; then MODE="morning"; fi
           echo "Running mode=$MODE"
           python main.py --mode "$MODE"
 
