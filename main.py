@@ -31,7 +31,8 @@ MONTHLY_REPORT_FILE = DATA_DIR / "monthly_report.xlsx"
 STATE_FILE = DATA_DIR / "state.json"
 
 CAPITAL = 100_000
-RISK_PER_TRADE = 0.005
+# Notional size of one entry = 0.5% of portfolio (NOT risk-to-stop sizing).
+POSITION_PCT_PER_TRADE = 0.005
 RISK_REWARD_RATIO = 2
 MIN_VOLUME_THRESHOLD = 1_000_000
 MIN_PRICE_THRESHOLD = 10
@@ -402,14 +403,20 @@ def generate_signal(
     if support is None or resistance is None:
         return None
 
+    # Entry size: max 0.5% of capital in dollars (shares = floor(budget / price)).
+    position_budget = CAPITAL * POSITION_PCT_PER_TRADE
+    position_size = int(position_budget / price)
+    if position_size <= 0:
+        return None
+    position_value = position_size * price
+    if position_value > position_budget + 1e-9:
+        return None
+    if not can_allocate(portfolio, position_value):
+        return None
+
     if action == "Buy":
         stop_loss_distance = max(price * MIN_STOP_LOSS_PERCENT, price - support)
         if stop_loss_distance <= 0:
-            return None
-        position_size = int(CAPITAL * RISK_PER_TRADE / stop_loss_distance)
-        if position_size <= 0:
-            return None
-        if not can_allocate(portfolio, position_size * price):
             return None
         stop_loss = price - stop_loss_distance
         take_profit_distance = stop_loss_distance * RISK_REWARD_RATIO
@@ -419,11 +426,6 @@ def generate_signal(
     else:
         stop_loss_distance = max(price * MIN_STOP_LOSS_PERCENT, resistance - price)
         if stop_loss_distance <= 0:
-            return None
-        position_size = int(CAPITAL * RISK_PER_TRADE / stop_loss_distance)
-        if position_size <= 0:
-            return None
-        if not can_allocate(portfolio, position_size * price):
             return None
         stop_loss = price + stop_loss_distance
         take_profit_distance = stop_loss_distance * RISK_REWARD_RATIO
