@@ -1,7 +1,8 @@
 {
   "jobs": {
     "2026-08-04": [
-      "morning"
+      "morning",
+      "close_check"
     ]
   },
   "last_weekly": null,
