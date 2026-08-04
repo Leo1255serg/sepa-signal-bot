@@ -1,5 +1,9 @@
 {
-  "jobs": {},
+  "jobs": {
+    "2026-08-04": [
+      "morning"
+    ]
+  },
   "last_weekly": null,
   "last_monthly": null
 }
