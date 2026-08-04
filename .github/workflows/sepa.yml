@@ -1,16 +1,22 @@
 name: SEPA Bot
 
-# Запуск только вручную или через внешний cron (cron-job.org).
-# Встроенный GitHub schedule на Free+Private ненадёжен — отключён.
+# На PUBLIC-репозитории встроенный schedule работает.
+# Secrets (Finviz / Finnhub / Telegram) остаются скрытыми в Settings → Secrets.
 on:
+  schedule:
+    # Пинги в окне американской сессии (UTC). Точный NY-слот выбирает Python (auto).
+    - cron: "0,15,30,45 13-21 * * 1-5"
+    # 1-е число месяца ~09:00 NY
+    - cron: "0,15,30,45 13-15 1 * *"
   workflow_dispatch:
     inputs:
       mode:
-        description: "Job: morning | midday | close_check | weekly | monthly"
+        description: "Job: auto | morning | midday | close_check | weekly | monthly"
         required: true
-        default: "morning"
+        default: "auto"
         type: choice
         options:
+          - auto
           - morning
           - midday
           - close_check
@@ -19,7 +25,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: sepa-bot
@@ -53,7 +58,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           MODE="${{ github.event.inputs.mode }}"
-          if [ -z "$MODE" ]; then MODE="morning"; fi
+          if [ -z "$MODE" ]; then MODE="auto"; fi
           echo "Running mode=$MODE"
           python main.py --mode "$MODE"
 
