@@ -2,8 +2,12 @@ name: SEPA Bot
 
 on:
   schedule:
-    - cron: "0,30 13-21 * * 1-5"
-    - cron: "0,30 13-14 1 * *"
+    # Every 15 minutes during the US session window (UTC).
+    # Exact job selection is done in Python via America/New_York (DST-safe).
+    # Off-:00/:30 minutes reduce GitHub schedule queue delays.
+    - cron: "5,20,35,50 13-21 * * 1-5"
+    # 1st of month ~09:00 NY (covers EST/EDT)
+    - cron: "5,20,35,50 13-14 1 * *"
   workflow_dispatch:
     inputs:
       mode:
