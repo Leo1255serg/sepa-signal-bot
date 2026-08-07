@@ -14,9 +14,11 @@
     ],
     "2026-08-07": [
       "morning",
-      "midday"
+      "midday",
+      "close_check",
+      "weekly"
     ]
   },
-  "last_weekly": null,
+  "last_weekly": "2026-08-07",
   "last_monthly": null
 }
