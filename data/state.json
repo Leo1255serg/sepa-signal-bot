@@ -17,6 +17,9 @@
       "midday",
       "close_check",
       "weekly"
+    ],
+    "2026-08-10": [
+      "morning"
     ]
   },
   "last_weekly": "2026-08-07",
