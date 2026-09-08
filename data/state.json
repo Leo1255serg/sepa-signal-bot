@@ -106,7 +106,8 @@
       "weekly"
     ],
     "2026-09-08": [
-      "midday"
+      "midday",
+      "close_check"
     ]
   },
   "last_weekly": "2026-09-04",
