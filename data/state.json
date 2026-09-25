@@ -155,9 +155,10 @@
       "midday"
     ],
     "2026-09-25": [
-      "midday"
+      "midday",
+      "weekly"
     ]
   },
-  "last_weekly": "2026-09-04",
+  "last_weekly": "2026-09-25",
   "last_monthly": null
 }
