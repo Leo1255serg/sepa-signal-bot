@@ -194,9 +194,11 @@
       "midday"
     ],
     "2026-10-23": [
-      "midday"
+      "midday",
+      "close_check",
+      "weekly"
     ]
   },
-  "last_weekly": "2026-09-25",
+  "last_weekly": "2026-10-23",
   "last_monthly": null
 }
